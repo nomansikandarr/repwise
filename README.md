@@ -1,36 +1,85 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Repwise
 
-## Getting Started
+A personal-training and coaching marketplace: discover trainers, buy video programs, chat, and book live 1:1 video sessions. Demo-grade, built on free tiers. See [PLAN.md](PLAN.md) for the full spec.
 
-First, run the development server:
+**Stack:** Next.js 16 (App Router, Cache Components) · Tailwind 4 + shadcn/ui · Neon Postgres + Drizzle · Neon Auth · Stream (chat + video) · ImageKit · Sentry · Vercel
+
+## Local setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
+neon login                   # once; opens the browser
+neon env pull                # writes the Neon env vars into .env.local
+# add NEON_AUTH_COOKIE_SECRET + ADMIN_EMAIL to .env.local (see .env.example)
+pnpm db:migrate              # create tables (uses DATABASE_URL_UNPOOLED)
+pnpm db:seed                 # demo data + 3 demo logins
+pnpm dev                     # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The project is linked to Neon through `.neon` and `neon.ts`. `neon deploy` provisions the services declared in `neon.ts` (Postgres, Auth, Object Storage, Functions, AI Gateway, Realtime) and pulls their env vars.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Demo logins (after `pnpm db:seed`)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Password for all three: `Repwise#2026demo`
 
-## Learn More
+| Role | Email | Lands on |
+|---|---|---|
+| Admin | `admin@repwise.test` | `/admin/applications` |
+| Member | `ali.raza@repwise.test` | `/app` |
+| Coach | `hamza.sheikh@repwise.test` | `/trainer` |
 
-To learn more about Next.js, take a look at the following resources:
+New sign-ups go through `/onboarding`: members start training immediately; coaches submit an application that an admin approves before their dashboard unlocks and their profile goes public.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### What is real vs. demo data
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Real (Neon Postgres + Neon Auth):** accounts, sessions, roles, onboarding, coach applications and approval, coach profile editing, member notifications, and the public trainer/program/review pages.
+- **Still hardcoded (`src/lib/mock.ts`):** bookings, chat, video calls, earnings, program ownership and lesson progress. Later phases in PLAN.md replace these.
 
-## Deploy on Vercel
+### Tests
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm run build && npm run test:e2e   # Playwright, uses your installed Edge
+pnpm db:seed                        # reset demo data afterwards
+```
+### Sentry
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Create a free account → new **Next.js** project.
+2. Copy the DSN → `NEXT_PUBLIC_SENTRY_DSN`.
+3. For readable stack traces in production, set `SENTRY_ORG`, `SENTRY_PROJECT` and `SENTRY_AUTH_TOKEN` (Settings → Auth Tokens) in Vercel.
+4. To verify, sign in and open `/api/debug/sentry`. A test error appears in Sentry.
+
+### Deploy to Vercel
+
+1. Push this repo to GitHub.
+2. Import it at [vercel.com/new](https://vercel.com/new) (sign up with GitHub).
+3. Add every variable from `.env.local` under **Settings → Environment Variables**, with `NEXT_PUBLIC_APP_URL` set to the Vercel URL.
+4. Add the Vercel URL to Neon Auth's trusted domains: `neon neon-auth domain add https://your-app.vercel.app` (localhost is already allowed).
+
+Stream and ImageKit keys are needed from phase 4 onward.
+
+## Scripts
+
+| Script | What it does |
+|---|---|
+| `pnpm dev` | Dev server (Turbopack) |
+| `pnpm build` | Production build |
+| `pnpm typecheck` / `pnpm lint` | TypeScript / ESLint |
+| `pnpm db:generate` | Create a migration from `src/db/schema.ts` |
+| `pnpm db:migrate` | Apply migrations to `DATABASE_URL` |
+| `pnpm db:studio` | Browse the database |
+| `pnpm db:seed` | Reset demo data and demo logins |
+| `npm run test:e2e` | End-to-end tests (needs a build) |
+
+## Project layout
+
+```
+src/
+  app/(site)/        public + signed-in pages with the site header
+  app/auth/          sign-in / sign-up
+  app/api/auth/      Neon Auth proxy route
+  db/schema.ts       Drizzle schema (all tables)
+  lib/dal.ts         session → user + profile (the only place that reads auth)
+  lib/auth/          Neon Auth server/client
+  proxy.ts           optimistic route protection
+drizzle/             SQL migrations
+```
