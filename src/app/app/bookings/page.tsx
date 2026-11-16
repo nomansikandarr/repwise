@@ -3,13 +3,17 @@ import { CtaLink } from "@/components/bits";
 import { PageTitle, Panel } from "@/components/dashboard-shell";
 import { SessionRow } from "@/components/session-row";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { bookings } from "@/lib/mock";
+import { requireUser } from "@/lib/dal";
+import { myBookings } from "@/lib/member";
 
 export const metadata: Metadata = { title: "Bookings" };
 
-export default function BookingsPage() {
-  const upcoming = bookings.filter((b) => b.status === "upcoming");
-  const past = bookings.filter((b) => b.status !== "upcoming");
+export default async function BookingsPage() {
+  const user = await requireUser();
+  const sessions = await myBookings(user.id);
+  const upcoming = sessions.filter((s) => s.status === "upcoming");
+  const past = sessions.filter((s) => s.status !== "upcoming").reverse();
+
   return (
     <>
       <PageTitle
@@ -24,11 +28,15 @@ export default function BookingsPage() {
         </TabsList>
         <TabsContent value="upcoming" className="mt-4">
           <Panel>
-            <ul className="divide-y">
-              {upcoming.map((b) => (
-                <SessionRow key={b.id} booking={b} view="client" />
-              ))}
-            </ul>
+            {upcoming.length ? (
+              <ul className="divide-y">
+                {upcoming.map((s) => (
+                  <SessionRow key={s.id} session={s} />
+                ))}
+              </ul>
+            ) : (
+              <p className="p-10 text-center text-sm text-muted-foreground">No upcoming sessions.</p>
+            )}
           </Panel>
           <p className="mt-4 text-sm text-muted-foreground">
             You can cancel free of charge up to 24 hours before a session. The amount is refunded to your original payment method.
@@ -36,11 +44,15 @@ export default function BookingsPage() {
         </TabsContent>
         <TabsContent value="past" className="mt-4">
           <Panel>
-            <ul className="divide-y">
-              {past.map((b) => (
-                <SessionRow key={b.id} booking={b} view="client" />
-              ))}
-            </ul>
+            {past.length ? (
+              <ul className="divide-y">
+                {past.map((s) => (
+                  <SessionRow key={s.id} session={s} />
+                ))}
+              </ul>
+            ) : (
+              <p className="p-10 text-center text-sm text-muted-foreground">No past sessions yet.</p>
+            )}
           </Panel>
         </TabsContent>
       </Tabs>

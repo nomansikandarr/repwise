@@ -1,12 +1,11 @@
 "use server";
 
 import { and, eq } from "drizzle-orm";
-import { updateTag } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
 import { notifications, trainerProfiles } from "@/db/schema";
 import { requireRole } from "@/lib/dal";
-import { CATALOG_TAG } from "@/lib/queries";
+import { invalidateCatalog } from "@/lib/catalog-cache";
 
 const input = z.object({
   userId: z.string().min(1),
@@ -46,6 +45,6 @@ export async function decideApplication(raw: z.input<typeof input>): Promise<Dec
 
   if (!updated) return { ok: false, error: "This application was already decided." };
   // Newly approved coaches must appear in the public directory right away.
-  updateTag(CATALOG_TAG);
+  invalidateCatalog();
   return { ok: true };
 }

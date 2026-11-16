@@ -151,8 +151,12 @@ test.describe.serial("authentication & roles", () => {
     await page.getByRole("button", { name: /save changes/i }).click();
     await expect(page.getByText("Profile saved")).toBeVisible();
 
+    // The public page is cached; it must show the edit within a few seconds.
     await page.goto("/trainers/hamza-sheikh");
-    await expect(page.getByText(headline)).toBeVisible();
+    await expect(async () => {
+      await page.reload();
+      await expect(page.getByText(headline)).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 20_000 });
   });
 
   test("admins are routed to the admin area", async ({ page }) => {

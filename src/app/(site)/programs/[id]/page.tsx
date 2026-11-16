@@ -3,8 +3,12 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { Rating, Tag } from "@/components/bits";
-import { PayDialog } from "@/components/pay-dialog";
+import { BuyProgramButton } from "@/components/buy-program";
+import { Skeleton } from "@/components/ui/skeleton";
+import { getCurrentUser } from "@/lib/dal";
+import { myLibrary } from "@/lib/member";
 import { getProgramBySlug, getTrainerBySlug, listPrograms } from "@/lib/queries";
 import { formatPrice } from "@/lib/utils";
 
@@ -135,24 +139,9 @@ export default async function ProgramPage({ params }: Props) {
             <div className="p-5">
               <p className="display text-3xl">{formatPrice(program.price)}</p>
               <p className="mt-1 text-sm text-muted-foreground">One-time payment. No subscription.</p>
-              <PayDialog
-                title="Complete your purchase"
-                lines={[
-                  ["Program", program.title],
-                  ["Coach", trainer.name],
-                  ["Access", "Lifetime"],
-                ]}
-                total={program.price}
-                successTitle="You're in"
-                successBody={`${program.title} is now in your library. Start with lesson 1 whenever you are ready.`}
-                successHref={`/app/programs/${program.id}/lessons/${first.id}`}
-                successCta="Start lesson 1"
-                trigger={
-                  <button className="eyebrow mt-5 h-12 w-full rounded-sm bg-brand text-brand-foreground hover:bg-brand/85">
-                    Buy program
-                  </button>
-                }
-              />
+              <Suspense fallback={<Skeleton className="mt-5 h-12 w-full rounded-sm" />}>
+                <PurchaseBox slug={program.id} title={program.title} coach={trainer.name} price={program.price} />
+              </Suspense>
               <ul className="mt-5 space-y-2 text-xs text-muted-foreground">
                 <li className="flex items-center gap-2">
                   <InfinityIcon className="size-3.5" /> Lifetime access
@@ -167,4 +156,30 @@ export default async function ProgramPage({ params }: Props) {
       </div>
     </>
   );
+}
+
+/** Per-viewer part of the price box: buy, continue, or sign in. */
+async function PurchaseBox({ slug, title, coach, price }: { slug: string; title: string; coach: string; price: number }) {
+  const user = await getCurrentUser();
+  const cta = "eyebrow mt-5 flex h-12 w-full items-center justify-center rounded-sm bg-brand text-brand-foreground hover:bg-brand/85";
+
+  if (!user) {
+    return (
+      <Link href={`/auth/sign-in?redirectTo=${encodeURIComponent(`/programs/${slug}`)}`} className={cta}>
+        Sign in to buy
+      </Link>
+    );
+  }
+  if (user.profile.role !== "client" || !user.profile.onboarded) {
+    return <p className="mt-5 rounded-md bg-muted p-3 text-sm text-muted-foreground">Programs can be bought from a member account.</p>;
+  }
+  const owned = (await myLibrary(user.id)).find((p) => p.slug === slug);
+  if (owned) {
+    return (
+      <Link href={`/app/programs/${slug}/lessons/${owned.next}`} className={cta}>
+        {owned.done ? `Continue · ${owned.done}/${owned.total} done` : "Start lesson 1"}
+      </Link>
+    );
+  }
+  return <BuyProgramButton slug={slug} title={title} coach={coach} price={price} />;
 }

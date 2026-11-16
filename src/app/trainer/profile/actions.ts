@@ -1,13 +1,12 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { updateTag } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
 import { profiles, trainerProfiles } from "@/db/schema";
 import { requireRole } from "@/lib/dal";
 import { SPECIALTIES } from "@/lib/mock";
-import { CATALOG_TAG } from "@/lib/queries";
+import { invalidateCatalog } from "@/lib/catalog-cache";
 
 const schema = z.object({
   name: z.string().trim().min(2, "Enter your name").max(60),
@@ -58,6 +57,6 @@ export async function saveCoachProfile(_prev: ProfileState, form: FormData): Pro
       .where(eq(trainerProfiles.userId, user.id));
   });
 
-  updateTag(CATALOG_TAG); // public profile and directory show the new details
+  invalidateCatalog(); // public profile and directory show the new details
   return { ok: true };
 }

@@ -32,12 +32,14 @@ New sign-ups go through `/onboarding`: members start training immediately; coach
 
 ### What is real vs. demo data
 
-- **Real (Neon Postgres + Neon Auth):** accounts, sessions, roles, onboarding, coach applications and approval, coach profile editing, member notifications, and the public trainer/program/review pages.
-- **Still hardcoded (`src/lib/mock.ts`):** bookings, chat, video calls, earnings, program ownership and lesson progress. Later phases in PLAN.md replace these.
+- **Real (Neon Postgres + Neon Auth):** accounts, roles, onboarding, coach approval, coach profile, public trainer/program pages, mock checkout (orders + enrollments), lesson progress, coach availability, live booking slots, booking + 24h cancellation with refund, reviews, member notifications, member and coach dashboards, earnings and clients.
+- **Payments are simulated** (`src/lib/payments`): orders, fees and refunds are recorded, no money moves.
+- **Still demo:** chat conversations and the video call screen (Stream, phases 5–6), video playback and uploads (ImageKit, phase 4), coach program editing.
 
 ### Tests
 
 ```bash
+pnpm test                           # unit tests (slot engine, fees, cancel window)
 npm run build && npm run test:e2e   # Playwright, uses your installed Edge
 pnpm db:seed                        # reset demo data afterwards
 ```

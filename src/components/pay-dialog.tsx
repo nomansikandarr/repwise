@@ -2,7 +2,9 @@
 
 import { CheckCircle2, CreditCard, Lock, Smartphone, Wallet } from "lucide-react";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
+import type { ActionResult } from "@/actions/commerce";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { cn, formatPrice } from "@/lib/utils";
 
@@ -13,57 +15,78 @@ const METHODS = [
 ];
 
 /**
- * Mock checkout. No money moves: "Pay" just flips to a success state.
- * Real payments plug in later behind the PaymentProvider interface (PLAN.md).
+ * Demo checkout. Payment is simulated (mock provider), but `onPay` records the
+ * order for real. A fresh idempotency key per dialog opening makes double
+ * clicks safe.
  */
 export function PayDialog({
   trigger,
   title,
   lines,
   total,
-  successTitle,
-  successBody,
-  successHref,
-  successCta,
+  onPay,
+  success,
 }: {
   trigger: React.ReactNode;
   title: string;
   lines: [string, string][];
   total: number;
-  successTitle: string;
-  successBody: string;
-  successHref: string;
-  successCta: string;
+  onPay: (idempotencyKey: string) => Promise<ActionResult>;
+  success: { title: string; body: string; href: string; cta: string };
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [method, setMethod] = useState("jazzcash");
   const [state, setState] = useState<"form" | "paying" | "done">("form");
+  const [error, setError] = useState<string | null>(null);
+  const [key, setKey] = useState("");
 
-  function pay() {
+  async function pay() {
     setState("paying");
-    setTimeout(() => setState("done"), 900);
+    setError(null);
+    const result = await onPay(key);
+    if (result.ok) {
+      setState("done");
+      router.refresh();
+      return;
+    }
+    if (result.signIn) {
+      router.push(`/auth/sign-in?redirectTo=${encodeURIComponent(pathname)}`);
+      return;
+    }
+    setError(result.error);
+    setState("form");
   }
 
   return (
-    <Dialog onOpenChange={(open) => !open && setState("form")}>
+    <Dialog
+      onOpenChange={(open) => {
+        if (open) {
+          setKey(crypto.randomUUID());
+          setState("form");
+          setError(null);
+        }
+      }}
+    >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="sm:max-w-md">
         {state === "done" ? (
           <div className="py-6 text-center">
             <CheckCircle2 className="mx-auto size-14 text-brand" strokeWidth={1.5} />
-            <DialogTitle className="display mt-5 text-2xl">{successTitle}</DialogTitle>
-            <DialogDescription className="mt-2">{successBody}</DialogDescription>
+            <DialogTitle className="display mt-5 text-2xl">{success.title}</DialogTitle>
+            <DialogDescription className="mt-2">{success.body}</DialogDescription>
             <Link
-              href={successHref}
+              href={success.href}
               className="eyebrow mt-7 inline-flex h-11 items-center rounded-sm bg-brand px-6 text-brand-foreground hover:bg-brand/85"
             >
-              {successCta}
+              {success.cta}
             </Link>
           </div>
         ) : (
           <>
             <DialogHeader>
               <DialogTitle className="display text-xl">{title}</DialogTitle>
-              <DialogDescription>Demo checkout. No real payment is taken.</DialogDescription>
+              <DialogDescription>Demo checkout. No real money is taken.</DialogDescription>
             </DialogHeader>
 
             <dl className="space-y-2 rounded-md border p-4 text-sm">
@@ -85,6 +108,7 @@ export function PayDialog({
                 {METHODS.map(({ id, label, icon: Icon }) => (
                   <button
                     key={id}
+                    type="button"
                     onClick={() => setMethod(id)}
                     className={cn(
                       "flex h-12 items-center gap-3 rounded-md border px-4 text-sm transition-colors",
@@ -99,9 +123,11 @@ export function PayDialog({
               </div>
             </div>
 
+            {error && <p className="rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</p>}
+
             <button
               onClick={pay}
-              disabled={state === "paying"}
+              disabled={state === "paying" || !key}
               className="eyebrow flex h-12 items-center justify-center gap-2 rounded-sm bg-brand text-brand-foreground hover:bg-brand/85 disabled:opacity-70"
             >
               <Lock className="size-3.5" />

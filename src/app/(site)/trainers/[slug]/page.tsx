@@ -3,8 +3,11 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { Rating, SectionHeading, Stars, Tag } from "@/components/bits";
-import { BookingPanel } from "@/components/booking-panel";
+import { BookingSection } from "@/components/booking-section";
+import { ReviewSection } from "@/components/review-section";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ProgramCard } from "@/components/cards";
 import { getTrainerBySlug, listProgramsByTrainer, listReviewsForTrainer, listTrainers } from "@/lib/queries";
 
@@ -104,7 +107,7 @@ export default async function TrainerPage({ params }: Props) {
           </section>
 
           {/* Reviews */}
-          <section>
+          <section id="review" className="scroll-mt-24">
             <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
               <h2 className="display text-2xl">Reviews</h2>
               {trainer.reviews > 0 && (
@@ -112,6 +115,11 @@ export default async function TrainerPage({ params }: Props) {
                   <Stars value={trainer.rating} /> {trainer.rating.toFixed(1)} from {trainer.reviews} verified clients
                 </p>
               )}
+            </div>
+            <div className="mb-5">
+              <Suspense>
+                <ReviewSection slug={trainer.slug} coachName={trainer.name} />
+              </Suspense>
             </div>
             {reviews.length === 0 && (
               <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
@@ -140,7 +148,9 @@ export default async function TrainerPage({ params }: Props) {
 
         {/* Booking */}
         <aside id="book" className="scroll-mt-24 lg:sticky lg:top-24 lg:self-start">
-          <BookingPanel trainer={trainer} />
+          <Suspense fallback={<Skeleton className="h-[460px] rounded-lg" />}>
+            <BookingSection slug={trainer.slug} />
+          </Suspense>
         </aside>
       </div>
     </>

@@ -3,13 +3,17 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { PageTitle, StatusPill } from "@/components/dashboard-shell";
-import { programsBy, trainerMe } from "@/lib/mock";
+import { netByProgram } from "@/lib/coach";
+import { getMyTrainerProfile, requireUser } from "@/lib/dal";
+import { listProgramsByTrainer } from "@/lib/queries";
 import { formatPrice } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Programs" };
 
-export default function TrainerProgramsPage() {
-  const mine = programsBy(trainerMe.slug);
+export default async function TrainerProgramsPage() {
+  const user = await requireUser();
+  const coach = await getMyTrainerProfile(user.id);
+  const [mine, net] = await Promise.all([coach ? listProgramsByTrainer(coach.slug) : [], netByProgram(user.id)]);
   return (
     <>
       <PageTitle
@@ -44,7 +48,7 @@ export default function TrainerProgramsPage() {
                 </div>
                 <div>
                   <dt className="text-xs text-muted-foreground">Earned (net)</dt>
-                  <dd className="mt-1 font-semibold">{formatPrice(Math.round(p.students * p.price * 0.9))}</dd>
+                  <dd className="mt-1 font-semibold">{formatPrice(net.get(p.id) ?? 0)}</dd>
                 </div>
               </dl>
               <Link href={`/trainer/programs/${p.id}`} className="eyebrow mt-5 inline-flex h-10 w-full items-center justify-center gap-2 rounded-sm border text-[11px] hover:border-brand">
@@ -54,19 +58,16 @@ export default function TrainerProgramsPage() {
           </article>
         ))}
 
-        <article className="overflow-hidden rounded-lg border border-dashed bg-card">
-          <div className="grid aspect-video place-items-center bg-muted/40 text-muted-foreground">No cover yet</div>
-          <div className="p-5">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="display text-lg">Shaadi Season Shred</h2>
-              <StatusPill status="Draft" />
-            </div>
-            <p className="mt-1 text-sm text-muted-foreground">3 lessons · price not set</p>
-            <Link href="/trainer/programs/new" className="eyebrow mt-5 inline-flex h-10 w-full items-center justify-center gap-2 rounded-sm border text-[11px] hover:border-brand">
-              <Pencil className="size-3.5" /> Continue editing
-            </Link>
-          </div>
-        </article>
+        <Link
+          href="/trainer/programs/new"
+          className="grid min-h-64 place-items-center rounded-lg border border-dashed bg-card p-5 text-center text-muted-foreground transition-colors hover:border-brand hover:text-foreground"
+        >
+          <span>
+            <Plus className="mx-auto mb-2 size-7" strokeWidth={1.5} />
+            <span className="display block text-lg">New program</span>
+            <span className="text-sm">Program editing goes live with video uploads (phase 4)</span>
+          </span>
+        </Link>
       </div>
     </>
   );

@@ -3,13 +3,28 @@ import Link from "next/link";
 import { PageTitle, Panel } from "@/components/dashboard-shell";
 import { SessionRow } from "@/components/session-row";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { trainerSessions } from "@/lib/mock";
+import { coachSessions } from "@/lib/coach";
+import { requireUser } from "@/lib/dal";
 
 export const metadata: Metadata = { title: "Sessions" };
 
-export default function TrainerBookingsPage() {
-  const upcoming = trainerSessions.filter((b) => b.status === "upcoming");
-  const past = trainerSessions.filter((b) => b.status !== "upcoming");
+export default async function TrainerBookingsPage() {
+  const user = await requireUser();
+  const sessions = await coachSessions(user.id);
+  const upcoming = sessions.filter((s) => s.status === "upcoming");
+  const past = sessions.filter((s) => s.status !== "upcoming").reverse();
+
+  const list = (items: typeof sessions, empty: string) =>
+    items.length ? (
+      <ul className="divide-y">
+        {items.map((s) => (
+          <SessionRow key={s.id} session={s} />
+        ))}
+      </ul>
+    ) : (
+      <p className="p-10 text-center text-sm text-muted-foreground">{empty}</p>
+    );
+
   return (
     <>
       <PageTitle
@@ -26,20 +41,12 @@ export default function TrainerBookingsPage() {
           <TabsTrigger value="upcoming">Upcoming ({upcoming.length})</TabsTrigger>
           <TabsTrigger value="past">Past ({past.length})</TabsTrigger>
         </TabsList>
-        {[
-          ["upcoming", upcoming],
-          ["past", past],
-        ].map(([key, list]) => (
-          <TabsContent key={key as string} value={key as string} className="mt-4">
-            <Panel>
-              <ul className="divide-y">
-                {(list as typeof trainerSessions).map((b) => (
-                  <SessionRow key={b.id} booking={b} view="trainer" />
-                ))}
-              </ul>
-            </Panel>
-          </TabsContent>
-        ))}
+        <TabsContent value="upcoming" className="mt-4">
+          <Panel>{list(upcoming, "No upcoming sessions.")}</Panel>
+        </TabsContent>
+        <TabsContent value="past" className="mt-4">
+          <Panel>{list(past, "No past sessions yet.")}</Panel>
+        </TabsContent>
       </Tabs>
     </>
   );

@@ -1,8 +1,8 @@
 /**
  * Demo content. `pnpm db:seed` copies trainers, programs, reviews and
  * applications from here into Postgres; the public pages read them from the
- * DB (src/lib/queries.ts). Bookings, chats, earnings and progress below are
- * still hardcoded until their phases (PLAN.md) replace them with real data.
+ * DB (src/lib/queries.ts). Only the chat conversations below are still shown
+ * directly in the UI, until Stream chat (phase 6) replaces them.
  * Prices are whole Pakistani rupees. Dates are fixed strings on purpose
  * (no Date.now()) so pages can be fully prerendered.
  */
@@ -417,7 +417,6 @@ export const programs: Program[] = [
 
 export const getTrainer = (slug: string) => trainers.find((t) => t.slug === slug);
 export const getProgram = (id: string) => programs.find((p) => p.id === id);
-export const programsBy = (slug: string) => programs.filter((p) => p.trainer === slug);
 
 export type Review = { name: string; city: string; avatar: string; rating: number; date: string; body: string };
 
@@ -472,53 +471,6 @@ export const reviews: Review[] = [
   },
 ];
 
-/* ---------- Signed-in client (demo) ---------- */
-
-export const me = {
-  name: "Ali Raza",
-  email: "ali.raza@example.com",
-  city: "Lahore",
-  avatar: "/images/p-man1.jpg",
-};
-
-export const myPrograms = [
-  { id: "desi-strength-12", done: 6, next: "7" },
-  { id: "daal-roti-macros", done: 2, next: "3" },
-  { id: "desk-back-reset", done: 6, next: "6" },
-];
-
-export type Booking = {
-  id: string;
-  trainer: string;
-  client: string;
-  clientAvatar: string;
-  day: string;
-  time: string;
-  minutes: number;
-  price: number;
-  status: "upcoming" | "completed" | "cancelled";
-  joinable?: boolean;
-};
-
-export const bookings: Booking[] = [
-  { id: "bk-1042", trainer: "hamza-sheikh", client: "Ali Raza", clientAvatar: "/images/p-man1.jpg", day: "Today, 12 Nov", time: "7:30 PM", minutes: 60, price: 3500, status: "upcoming", joinable: true },
-  { id: "bk-1047", trainer: "usman-tariq", client: "Ali Raza", clientAvatar: "/images/p-man1.jpg", day: "Sat, 14 Nov", time: "6:00 AM", minutes: 45, price: 2500, status: "upcoming" },
-  { id: "bk-1051", trainer: "hamza-sheikh", client: "Ali Raza", clientAvatar: "/images/p-man1.jpg", day: "Thu, 19 Nov", time: "7:30 PM", minutes: 60, price: 3500, status: "upcoming" },
-  { id: "bk-1019", trainer: "hamza-sheikh", client: "Ali Raza", clientAvatar: "/images/p-man1.jpg", day: "Thu, 5 Nov", time: "7:30 PM", minutes: 60, price: 3500, status: "completed" },
-  { id: "bk-1003", trainer: "rohan-mehta", client: "Ali Raza", clientAvatar: "/images/p-man1.jpg", day: "Mon, 26 Oct", time: "8:00 AM", minutes: 45, price: 2800, status: "completed" },
-  { id: "bk-0988", trainer: "bilal-ahmed", client: "Ali Raza", clientAvatar: "/images/p-man1.jpg", day: "Sun, 18 Oct", time: "5:00 PM", minutes: 60, price: 4000, status: "cancelled" },
-];
-
-export const slotDays = [
-  { key: "thu", label: "Thu", date: "12 Nov", slots: ["7:30 PM", "9:00 PM"] },
-  { key: "fri", label: "Fri", date: "13 Nov", slots: ["6:00 AM", "7:00 AM", "8:30 PM"] },
-  { key: "sat", label: "Sat", date: "14 Nov", slots: ["6:00 AM", "10:00 AM", "5:00 PM", "8:00 PM"] },
-  { key: "sun", label: "Sun", date: "15 Nov", slots: [] },
-  { key: "mon", label: "Mon", date: "16 Nov", slots: ["6:00 AM", "7:30 PM", "9:00 PM"] },
-  { key: "tue", label: "Tue", date: "17 Nov", slots: ["7:30 PM"] },
-  { key: "wed", label: "Wed", date: "18 Nov", slots: ["6:00 AM", "7:00 AM", "9:00 PM"] },
-];
-
 export type ChatMessage = {
   id: string;
   from: "me" | "them";
@@ -549,6 +501,8 @@ const hamzaThread: ChatMessage[] = [
   { id: "m5", from: "them", text: "Yes, two roti with salan and a bowl of daal is perfect. Just keep the chai to one cup after.", time: "6:18 PM", replyTo: "is two roti at dinner okay on training days?", reactions: ["👍"] },
   { id: "m6", from: "them", text: "See you on the call at 7:30 tonight. Bring your form-check video.", time: "6:19 PM" },
 ];
+
+/* ---------- Chat (still demo until Stream chat, phase 6) ---------- */
 
 export const clientConversations: Conversation[] = [
   { id: "c1", name: "Hamza Sheikh", avatar: "/images/dumbbell.jpg", role: "Strength coach", online: true, unread: 2, last: "See you on the call at 7:30 tonight.", when: "6:19 PM", messages: hamzaThread },
@@ -583,61 +537,6 @@ export const notifications = [
   { id: "n4", icon: "play", title: "New lesson unlocked", body: "Week 5–8: adding load is now available in Desi Strength 12.", when: "2 days ago", unread: false },
   { id: "n5", icon: "refund", title: "Refund processed", body: "Rs 4,000 refunded for your cancelled session with Bilal Ahmed.", when: "18 Oct", unread: false },
   { id: "n6", icon: "star", title: "How was your session?", body: "Leave a review for Rohan Mehta and help others find a great coach.", when: "27 Oct", unread: false },
-];
-
-/* ---------- Signed-in trainer (demo: Hamza Sheikh) ---------- */
-
-export const trainerMe = trainers[0];
-
-export const trainerStats = {
-  monthNet: 286200,
-  monthGross: 318000,
-  fee: 31800,
-  lifetimeNet: 2412000,
-  activeClients: 64,
-  sessionsThisWeek: 14,
-  rating: 4.9,
-};
-
-/** Net earnings per day for the last 30 days, in thousands of rupees. */
-export const earnings30 = [6, 9, 4, 12, 8, 14, 3, 7, 11, 9, 13, 6, 10, 16, 5, 8, 12, 9, 15, 7, 11, 13, 6, 9, 14, 10, 17, 8, 12, 11];
-
-export const payouts = [
-  { id: "ord-7741", date: "12 Nov", client: "Ali Raza", item: "1:1 session · 60 min", type: "Session", gross: 3500, status: "Paid" },
-  { id: "ord-7738", date: "12 Nov", client: "Saad Mahmood", item: "Desi Strength 12", type: "Program", gross: 6500, status: "Paid" },
-  { id: "ord-7730", date: "11 Nov", client: "Danish Iqbal", item: "Daal Roti Macros", type: "Program", gross: 2800, status: "Paid" },
-  { id: "ord-7722", date: "11 Nov", client: "Hassan Javed", item: "1:1 session · 60 min", type: "Session", gross: 3500, status: "Paid" },
-  { id: "ord-7709", date: "10 Nov", client: "Omar Farooq", item: "1:1 session · 60 min", type: "Session", gross: 3500, status: "Refunded" },
-  { id: "ord-7701", date: "9 Nov", client: "Kashif Ali", item: "Desi Strength 12", type: "Program", gross: 6500, status: "Paid" },
-  { id: "ord-7694", date: "9 Nov", client: "Vikram Nair", item: "Daal Roti Macros", type: "Program", gross: 2800, status: "Paid" },
-];
-
-export const trainerSessions: Booking[] = [
-  { id: "bk-1042", trainer: "hamza-sheikh", client: "Ali Raza", clientAvatar: "/images/p-man1.jpg", day: "Today, 12 Nov", time: "7:30 PM", minutes: 60, price: 3500, status: "upcoming", joinable: true },
-  { id: "bk-1043", trainer: "hamza-sheikh", client: "Saad Mahmood", clientAvatar: "/images/p-pk1.jpg", day: "Today, 12 Nov", time: "9:00 PM", minutes: 60, price: 3500, status: "upcoming" },
-  { id: "bk-1045", trainer: "hamza-sheikh", client: "Hassan Javed", clientAvatar: "/images/p-pk2.jpg", day: "Fri, 13 Nov", time: "6:00 AM", minutes: 60, price: 3500, status: "upcoming" },
-  { id: "bk-1048", trainer: "hamza-sheikh", client: "Danish Iqbal", clientAvatar: "/images/p-man3.jpg", day: "Sat, 14 Nov", time: "10:00 AM", minutes: 60, price: 3500, status: "upcoming" },
-  { id: "bk-1021", trainer: "hamza-sheikh", client: "Vikram Nair", clientAvatar: "/images/p-man2.jpg", day: "Tue, 10 Nov", time: "8:30 PM", minutes: 60, price: 3500, status: "completed" },
-  { id: "bk-1017", trainer: "hamza-sheikh", client: "Omar Farooq", clientAvatar: "/images/p-man3.jpg", day: "Tue, 10 Nov", time: "7:00 AM", minutes: 60, price: 3500, status: "cancelled" },
-];
-
-export const trainerClients = [
-  { name: "Ali Raza", city: "Lahore", avatar: "/images/p-man1.jpg", since: "Jul 2026", programs: 2, sessions: 14, spent: 58300, last: "Today" },
-  { name: "Saad Mahmood", city: "Faisalabad", avatar: "/images/p-pk1.jpg", since: "Aug 2026", programs: 1, sessions: 9, spent: 38000, last: "Today" },
-  { name: "Danish Iqbal", city: "Karachi", avatar: "/images/p-man3.jpg", since: "Mar 2026", programs: 2, sessions: 21, spent: 82800, last: "Yesterday" },
-  { name: "Hassan Javed", city: "Multan", avatar: "/images/p-pk2.jpg", since: "Nov 2026", programs: 0, sessions: 1, spent: 3500, last: "Tue" },
-  { name: "Vikram Nair", city: "Pune", avatar: "/images/p-man2.jpg", since: "Sep 2026", programs: 1, sessions: 4, spent: 16800, last: "10 Nov" },
-  { name: "Fatima Noor", city: "Islamabad", avatar: "/images/p-woman.jpg", since: "Oct 2026", programs: 1, sessions: 0, spent: 2800, last: "2 Nov" },
-];
-
-export const weekAvailability = [
-  { day: "Monday", on: true, ranges: ["6:00 AM – 9:00 AM", "7:00 PM – 10:00 PM"] },
-  { day: "Tuesday", on: true, ranges: ["7:00 PM – 10:00 PM"] },
-  { day: "Wednesday", on: true, ranges: ["6:00 AM – 9:00 AM", "7:00 PM – 10:00 PM"] },
-  { day: "Thursday", on: true, ranges: ["7:00 PM – 10:00 PM"] },
-  { day: "Friday", on: true, ranges: ["6:00 AM – 8:00 AM", "8:30 PM – 10:00 PM"] },
-  { day: "Saturday", on: true, ranges: ["6:00 AM – 12:00 PM", "5:00 PM – 9:00 PM"] },
-  { day: "Sunday", on: false, ranges: [] },
 ];
 
 /* ---------- Admin ---------- */

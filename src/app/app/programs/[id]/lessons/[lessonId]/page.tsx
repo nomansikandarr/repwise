@@ -3,30 +3,35 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProgram, getTrainer, myPrograms, programs } from "@/lib/mock";
+import { MarkCompleteButton } from "@/components/mark-complete";
+import { requireUser } from "@/lib/dal";
+import { programState } from "@/lib/member";
+import { getProgramBySlug, getTrainerBySlug, listPrograms } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
 type Props = { params: Promise<{ id: string; lessonId: string }> };
 
-export function generateStaticParams() {
-  return programs.flatMap((p) => p.lessons.map((l) => ({ id: p.id, lessonId: l.id })));
+export async function generateStaticParams() {
+  return (await listPrograms()).flatMap((p) => p.lessons.map((l) => ({ id: p.id, lessonId: l.id })));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id, lessonId } = await params;
-  return { title: getProgram(id)?.lessons.find((l) => l.id === lessonId)?.title ?? "Lesson" };
+  return { title: (await getProgramBySlug(id))?.lessons.find((l) => l.id === lessonId)?.title ?? "Lesson" };
 }
 
 export default async function LessonPage({ params }: Props) {
   const { id, lessonId } = await params;
-  const program = getProgram(id);
+  const program = await getProgramBySlug(id);
   const index = program?.lessons.findIndex((l) => l.id === lessonId) ?? -1;
   if (!program || index < 0) notFound();
 
   const lesson = program.lessons[index];
-  const trainer = getTrainer(program.trainer)!;
-  const owned = myPrograms.find((mp) => mp.id === program.id);
-  const doneCount = owned?.done ?? 0;
+  const [trainer, user] = await Promise.all([getTrainerBySlug(program.trainer), requireUser()]);
+  if (!trainer) notFound();
+  const { owned, completed } = await programState(user.id, program.id);
+  const doneCount = completed.size;
+  const isComplete = completed.has(index + 1);
   const locked = !owned && !lesson.preview;
   const prev = program.lessons[index - 1];
   const next = program.lessons[index + 1];
@@ -88,9 +93,13 @@ export default async function LessonPage({ params }: Props) {
             <h1 className="display text-2xl sm:text-3xl">{lesson.title}</h1>
           </div>
           {!locked && (
-            <button className="eyebrow inline-flex h-11 items-center gap-2 rounded-sm bg-brand px-5 text-brand-foreground hover:bg-brand/85">
-              <CheckCircle2 className="size-4" /> Mark complete
-            </button>
+            owned ? (
+              <MarkCompleteButton slug={program.id} position={index + 1} complete={isComplete} nextHref={next ? `${base}/${next.id}` : undefined} />
+            ) : (
+              <Link href={`/programs/${program.id}`} className="eyebrow inline-flex h-11 items-center rounded-sm bg-brand px-5 text-brand-foreground hover:bg-brand/85">
+                Buy to track progress
+              </Link>
+            )
           )}
         </div>
 
@@ -139,7 +148,7 @@ export default async function LessonPage({ params }: Props) {
         </div>
         <ol className="max-h-[60vh] divide-y overflow-y-auto">
           {program.lessons.map((l, i) => {
-            const isDone = i < doneCount;
+            const isDone = completed.has(i + 1);
             const isLocked = !owned && !l.preview;
             return (
               <li key={l.id}>

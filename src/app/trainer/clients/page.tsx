@@ -1,30 +1,28 @@
-import { MessageSquare, Search } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { PageTitle, Panel, StatCard } from "@/components/dashboard-shell";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { trainerClients } from "@/lib/mock";
+import { coachClients, coachStats } from "@/lib/coach";
+import { requireUser } from "@/lib/dal";
 import { formatPrice } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Clients" };
 
-export default function ClientsPage() {
+export default async function ClientsPage() {
+  const user = await requireUser();
+  const [clients, stats] = await Promise.all([coachClients(user.id), coachStats(user.id)]);
+  const repeat = clients.length ? Math.round((clients.filter((c) => c.programs + c.sessions > 1).length / clients.length) * 100) : 0;
   return (
     <>
-      <PageTitle title="Clients" body="Everyone who has bought a program, booked a session or messaged you." />
+      <PageTitle title="Clients" body="Everyone who has bought a program or booked a session with you." />
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <StatCard label="Active clients" value="64" hint="Trained in the last 30 days" />
-        <StatCard label="New this month" value="6" />
-        <StatCard label="Repeat rate" value="78%" hint="Booked more than once" />
+        <StatCard label="Active clients" value={String(stats.activeClients)} hint="Bought in the last 30 days" />
+        <StatCard label="New this month" value={String(stats.newClientsThisMonth)} hint={`${clients.length} clients in total`} />
+        <StatCard label="Repeat rate" value={`${repeat}%`} hint="Bought more than once" />
       </div>
       <Panel>
-        <div className="border-b p-4">
-          <label className="relative block max-w-sm">
-            <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-            <input placeholder="Search clients" className="h-10 w-full rounded-sm border bg-background pr-3 pl-9 text-sm outline-none focus:border-brand" />
-          </label>
-        </div>
         <Table>
           <TableHeader>
             <TableRow>
@@ -38,8 +36,8 @@ export default function ClientsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {trainerClients.map((c) => (
-              <TableRow key={c.name}>
+            {clients.map((c) => (
+              <TableRow key={c.clientId}>
                 <TableCell className="pl-5">
                   <div className="flex items-center gap-3">
                     <Image src={c.avatar} alt="" width={36} height={36} className="size-9 rounded-full object-cover" />
